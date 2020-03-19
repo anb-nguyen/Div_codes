@@ -1,0 +1,104 @@
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.std_logic_unsigned.all;
+
+entity top is
+
+generic(periods: integer:= 6250000);
+port(
+
+clk: in std_logic;
+ btn: in std_logic_vector (3 downto 0);
+ sw: in std_logic;
+ led:out std_logic_vector (3 downto 0));
+ 
+end top;
+
+
+
+architecture Behavioral of top is
+constant not_pressed : std_logic := '0';
+constant pressed : std_logic := '1';
+
+signal buff_out: std_logic;
+
+signal state, next_state, prev_state : std_logic := '0';
+signal counter: std_logic_vector (3 downto 0):="0000";
+signal timer, next_timer : std_logic_vector (22 downto 0) := (others => '0');
+signal push_timer, next_push_timer : std_logic_vector (28 downto 0) := (others => '0');
+signal push_two_sec : boolean := false;
+
+begin
+
+
+
+
+
+sync_proc: process(clk,sw)
+begin
+    if rising_edge(clk) then
+        prev_state <= state;
+        state <= next_state;
+        timer <= next_timer;
+        push_timer <= next_push_timer;
+        led <= counter;
+        if ((prev_state = not_pressed) and (state = pressed)) then
+            -- output for one clock cycle
+            counter <= counter + 1;
+        end if;
+        
+    end if;
+end process;
+
+
+
+ process
+ begin
+ 
+ 
+     
+     case(state) is
+     -------------------------
+        when not_pressed =>
+            next_timer <= (others => '0'); -- all bits are 0
+             if (btn(0) = '1') then
+                next_state <= pressed;
+             end if;
+        -------------------------     
+        when pressed =>
+            if (btn(0) = '0') then
+                push_two_sec <= false;
+                next_push_timer <= (others => '0');
+                next_timer <= timer + 1;
+                if (timer(22) = '1') then
+                    next_state <= not_pressed;
+                    next_timer <= (others => '0'); -- all bits are 0 
+                end if; 
+            
+            
+            else -- if the button is pressed
+                next_timer <= (others => '0'); -- all bits are 0
+                next_push_timer <= push_timer + '1';
+                
+                if (push_two_sec = false) then
+                    if(push_timer(28) = '1') then
+                        push_two_sec <= true;
+                        next_push_timer <= (others => '0');
+                    end if;
+                else
+                    if(push_timer(26) = '1') then
+                        next_state <= not_pressed; -- trick to make pulse
+                        next_push_timer <= (others => '0');
+                    end if;
+                end if;
+                 
+                
+                -- after 2 secs, high output every 0.5 secs
+                
+            end if;
+     end case;
+  end process;
+  
+  end Behavioral;

@@ -1,0 +1,111 @@
+
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity top is
+       Port ( btn : in std_logic;
+              clk:  in std_logic;
+              res : in std_logic ;
+              led : out std_logic );
+end top;
+
+architecture Behavioral of top is
+
+    type state is (
+                    idle_state,
+                    high_debounce_state,
+                    high_state,
+                    low_debounce_state);
+                    
+    signal next_state : state ;
+    signal current_state :state;
+    signal counter : integer ;
+    signal start_counting : boolean ; 
+    constant period : integer := 6250000;
+    begin
+
+    next_state_logic : process( current_state , btn ,counter )   
+    
+    
+    begin 
+        next_state <= current_state ;
+        start_counting <= false ;
+        
+        case current_state is 
+            when idle_state => 
+                if btn = '1' then 
+                    next_state <= high_debounce_state ;
+                end if ;
+                
+                
+            when high_debounce_state =>
+                 start_counting <= true ;
+                if counter > period then              --the debounce time is up 
+                    next_state <= high_state ;
+                end if ;
+                
+                
+            when high_state =>
+                if btn = '0' then
+                    next_state <= low_debounce_state ;
+                end if ;   
+                
+                         
+            when low_debounce_state =>
+                 start_counting <= true ;
+                if counter > period then
+                    next_state <= idle_state ;
+                end if;  
+                   
+        end case ; 
+             
+    end process ;
+    
+    
+              
+                
+    sync_state : process (clk,res,start_counting)
+    
+    begin
+        if rising_edge (clk) then 
+           if res = '1' then                         --- res can be 1 or 0 it doesn't matterv
+           current_state <= idle_state ;
+           counter <= 0 ;
+           
+        else 
+           current_state <= next_state ;             -- sync_state 
+               
+              if start_counting = true  then         -- if current_state = high_deb_state or low_deb_state 
+                 counter <= counter + 1 ;
+           
+           
+              else 
+                    counter <= 0 ;
+        end if;   
+            end if;
+               end if;
+                    end process ;
+                    
+                    
+                    
+      output_logic : process (current_state) 
+      
+      
+       begin
+            case current_state is 
+                 when idle_state =>
+                 led <= '0';
+             
+                 when high_debounce_state =>
+                      led <= '1' ;
+                      
+                 when high_state =>
+                      led <= '1';
+                      
+                 when low_debounce_state =>
+                      led <= '0';
+             end case ;              
+                 
+        end process;
+end Behavioral;
